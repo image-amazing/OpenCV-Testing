@@ -1,0 +1,9 @@
+.vs/
+Release/
+Debug/
+CameraCalibration/
+
+*db
+*.jpg
+*.vcxproj*
+*.avi
