@@ -3,16 +3,21 @@
 
 #include "stdafx.h"
 #include "opencv.hpp"
+#include "opencv2/xfeatures2d.hpp"
 //#include <iostream>
 #include <io.h>
 
 using namespace cv;
+using namespace cv::xfeatures2d;
 using namespace std;
 
 #define VIDEO_DIR "..\\Video"
 
-void keyPointMatch();
+//void keyPointMatch(vector<KeyPoint>& corners, vector<KeyPoint>& corners_pre);
+void getKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners);
+void plotKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners);
 Rect moveRect(Rect src, int x, int y);
+Rect enlargeRect(Rect src, float scale);
 void getFiles(string path, vector<string>& files);
 
 int main() {
@@ -25,6 +30,9 @@ int main() {
     Rect target;
     Rect target_pre;
     bool tracked = false;
+
+    vector<KeyPoint> corners;
+    vector<KeyPoint> corners_pre;
 
     VideoCapture capture;
     vector<string> video_files;
@@ -44,14 +52,20 @@ int main() {
             cvtColor(frame, frame_gray, CV_BGR2GRAY);
             cars.clear();
             if (tracked) {    // target_pre exists
-                track_area = Rect(target_pre.x - 0.3*target_pre.width, target_pre.y - 0.3*target_pre.height, 1.6*target_pre.width, 1.6*target_pre.height);
+                track_area = enlargeRect(target, 0.3);
                 cascade.detectMultiScale(frame_gray(track_area), cars, 1.1, 1, 0, Size(30,30));
                 if (cars.size() > 0) {
                     target = moveRect(cars[0], track_area.x, track_area.y);
-                    keyPointMatch();
+                    if (true) {
+                        Rect area = enlargeRect(target, 0.1);
+                        getKeyPoints(frame_gray, area, corners);
+                        plotKeyPoints(frame, area, corners);
+                        //keyPointMatch(corners, corners_pre);
+                    }
                     rectangle(frame, target, Scalar(0, 255, 255), 2);
                     tracked = true;
                     target_pre = target;
+                    corners_pre = corners;
                 } else {
                     tracked = false;
                 }
@@ -60,16 +74,20 @@ int main() {
                 cascade.detectMultiScale(frame_gray(search_roi), cars, 1.2, 3);
                 if (cars.size() > 0) {
                     target = moveRect(cars[0], search_roi.x, search_roi.y);
+                    Rect area = enlargeRect(target, 0.1);
+                    getKeyPoints(frame_gray, area, corners);
+                    plotKeyPoints(frame, area, corners);
                     rectangle(frame, target, Scalar(0, 255, 255), 2);
                     tracked = true;
                     target_pre = target;
+                    corners_pre = corners;
                 } else {
                     tracked = false;
                 }
             }
             rectangle(frame, search_roi, Scalar(255, 0, 0));
             imshow("R", frame);
-            waitKey(20);
+            waitKey(50);
         }
     }
 
@@ -78,9 +96,35 @@ int main() {
 }
 
 
-void keyPointMatch() {
+//void keyPointMatch(vector<KeyPoint>& corners, vector<KeyPoint>& corners_pre) {
+//
+//}
 
+
+void getKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners) {
+    Ptr<Feature2D> b = SURF::create();
+    Mat descImg;
+    b->detect(frame(target), corners, Mat());
+    b->compute(frame(target), corners, descImg);
+
+    /*corners.clear();
+    goodFeaturesToTrack(frame(target), corners, 100, 0.01, 5, Mat(), 3, false, 0.04);
+    for (size_t i = 0; i < corners.size(); i++) {
+        corners[i].x += target.x;
+        corners[i].y += target.y;
+    }*/
 }
+
+
+void plotKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners) {
+    Point p;
+    for (size_t i = 0; i < corners.size(); i++) {
+        p.x = corners[i].pt.x + target.x;
+        p.y = corners[i].pt.y + target.y;
+        circle(frame, p, 3, Scalar(0, 0, 255), -1);
+    }
+}
+
 
 Rect moveRect(Rect src, int x, int y) {
     Rect dst;
@@ -88,6 +132,16 @@ Rect moveRect(Rect src, int x, int y) {
     dst.y = src.y + y;
     dst.width = src.width;
     dst.height = src.height;
+    return dst;
+}
+
+
+Rect enlargeRect(Rect src, float scale) {
+    Rect dst;
+    dst.x = src.x - scale*src.width;
+    dst.y = src.y - scale*src.height;
+    dst.width = (1 + 2 * scale)*src.width;
+    dst.height = (1 + 2 * scale)*src.height;
     return dst;
 }
 
