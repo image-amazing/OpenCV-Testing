@@ -7,3 +7,4 @@ CameraCalibration/
 *.jpg
 *.vcxproj*
 *.avi
+*.yml
