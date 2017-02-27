@@ -10,15 +10,20 @@ using namespace std;
 
 #define TRAIN_NEW_MODEL 0
 #define VIDEO_TEST 1
+#define USE_VIDEO 1
 #define VIDEO_DIR "..\\Video"
 #define TEST_DIR "..\\VideoBack"
 
-#define DATABASE_SIZE 20    // 数据库人数
-#define WINDOW_SIZE 30      // 判断结果的滑动时间窗长度
+#define DATABASE_SIZE 32    // 数据库人数
+#define WINDOW_SIZE 40      // 判断结果的滑动时间窗长度
 #define EIGEN_RESULT 1
 #define FISHER_RESULT 2
 #define LBPH_RESULT 3
 
+Ptr<BasicFaceRecognizer> model1 = createEigenFaceRecognizer();
+Ptr<BasicFaceRecognizer> model2 = createFisherFaceRecognizer();
+Ptr<LBPHFaceRecognizer> model3 = createLBPHFaceRecognizer();
+CascadeClassifier cascade("lbpcascade_frontalface_improved.xml");
 
 class MyRecognizer {
   public:
@@ -95,7 +100,7 @@ void MyRecognizer::updataInfo() {
 }
 
 int MyRecognizer::getRecognizeResult() {
-    int hist[DATABASE_SIZE + 1] = {0};
+    vector<int> hist(DATABASE_SIZE + 1);
     for (size_t i = 0; i < WINDOW_SIZE; i++) {
         hist[frame_result[i][0]-1] += frame_result[i][1];
     }
@@ -125,12 +130,9 @@ int MyRecognizer::getRecognizeResult() {
 
 void getFiles(string path, vector<string>& files);
 Rect enlargeRect(Rect src, float scale);
+void videoProcess(bool use_video, string video_dir, int camera_index = 0);
 
 int main(int argc, const char *argv[]) {
-    CascadeClassifier cascade("lbpcascade_frontalface_improved.xml");
-    Ptr<BasicFaceRecognizer> model1 = createEigenFaceRecognizer();
-    Ptr<BasicFaceRecognizer> model2 = createFisherFaceRecognizer();
-    Ptr<LBPHFaceRecognizer> model3 = createLBPHFaceRecognizer();
     Mat frame;
     Mat frameGray;
     vector<Rect> recs;
@@ -189,123 +191,120 @@ int main(int argc, const char *argv[]) {
         model3->train(images, labels);
         model3->save("lbphfaces.yml");
     } else {
+        cout << "Loading eigenfaces.yml ..." << endl;
         model1->load("eigenfaces.yml");
+        cout << "Loading fisherfaces.yml ..." << endl;
         model2->load("fisherfaces.yml");
+        cout << "Loading lbphfaces.yml ..." << endl;
         model3->load("lbphfaces.yml");
+        cout << "Model loading finished." << endl;
     }
 
     if (VIDEO_TEST) {
-        //VideoCapture capture(0);
-        vector<string> files;
-        getFiles(VIDEO_DIR, files);
-        VideoCapture capture;
-
-        ofstream fout("Result.txt");
-
-        for (size_t i = 0; i < files.size(); i++) {
-            capture.open(files[i]);
-            cout << files[i] << endl;
-            MyRecognizer recog;
-            int frame_num = capture.get(CV_CAP_PROP_FRAME_COUNT);
-            int frame_count = 0;
-            int detect_count = 0;
-            int wrong_count[3];
-            int time_count[3];
-            double confidence_count[6];
-            int t1, t2;
-            while (frame_count < frame_num) {
-                capture >> frame;
-                if (!frame.empty()) {
-                    cvtColor(frame, frameGray, CV_BGR2GRAY);
-                    recs.clear();
-                    cascade.detectMultiScale(frameGray, recs, 1.3, 3, 0, Size(120, 120));
-                    if (recs.size() > 0) {
-                        face_rect = enlargeRect(recs[0], 0.1);
-                        face = frameGray(face_rect).clone();
-                        resize(face, face, face_size);
-                        normalize(face, face, 0, 255, NORM_MINMAX, CV_8UC1);
-                        int predictedLabel = -1;
-                        double confidence = 0.0;
-
-                        // EigenFace
-                        t1 = getTickCount();
-                        model1->predict(face, predictedLabel, confidence);
-                        recog.setResult(predictedLabel, EIGEN_RESULT);
-                        if (predictedLabel != i) {
-                            wrong_count[0]++;
-                            //fout << 0 << "," << confidence << ",";
-                        } else {
-                            //fout << confidence << "," << 0 << ",";
-                        }
-                        t2 = getTickCount();
-                        time_count[0] += (t2 - t1);
-                        //cout << (t2 - t1) / getTickFrequency() * 1000 << ", ";
-                        //cout << "1: P = " << predictedLabel << ", C = " << confidence << endl;
-
-                        // FisherFace
-                        t1 = getTickCount();
-                        model2->predict(face, predictedLabel, confidence);
-                        recog.setResult(predictedLabel, FISHER_RESULT);
-                        if (predictedLabel != i) {
-                            wrong_count[1]++;
-                            //fout << 0 << "," << confidence << ",";
-                        } else {
-                            //fout << confidence << "," << 0 << ",";
-                        }
-                        t2 = getTickCount();
-                        time_count[1] += (t2 - t1);
-                        //cout << (t2 - t1) / getTickFrequency() * 1000 << ", ";
-                        //cout << "2: P = " << predictedLabel << ", C = " << confidence << endl;
-
-                        // LBPHFace
-                        t1 = getTickCount();
-                        model3->predict(face, predictedLabel, confidence);
-                        recog.setResult(predictedLabel, LBPH_RESULT);
-                        if (predictedLabel != i) {
-                            wrong_count[2]++;
-                            //fout << 0 << "," << confidence << ",";
-                        } else {
-                            //fout << confidence << "," << 0 << ",";
-                        }
-                        t2 = getTickCount();
-                        time_count[2] += (t2 - t1);
-                        //cout << (t2 - t1) / getTickFrequency() * 1000 << endl;
-                        //cout << "3: P = " << predictedLabel << ", C = " << confidence << endl;
-                        //fout << endl;
-
-                        recog.updataInfo();
-
-                        if (detect_count % (WINDOW_SIZE/2) == 0 && detect_count>WINDOW_SIZE) {
-                            int final_result = recog.getRecognizeResult();
-                            if (final_result == DATABASE_SIZE+1) {
-                                cout << "Not passed." << endl;
-                            } else {
-                                cout << "Result = " << final_result << endl;
-                            }
-                        }
-
-                        detect_count++;
-                        rectangle(frame, recs[0], Scalar(255, 0, 0), 2);
-                        imshow("Face", face);
-                        imshow("R", frame);
-                        waitKey(10);
-                    }
-                }
-                frame_count++;
+        if (USE_VIDEO) {
+            vector<string> files;
+            getFiles(VIDEO_DIR, files);
+            for (size_t i = 0; i < files.size(); i++) {
+                videoProcess(USE_VIDEO, files[i]);
             }
-            capture.release();
-
-            // 错误率及时间消耗统计
-            /*fout << "No. " << i << " error rate = " << float(wrong_count[0]) / detect_count << ", "
-                 << float(wrong_count[1]) / detect_count << ", " << float(wrong_count[2]) / detect_count << endl;
-            fout << "No. " << i << " time = " << time_count[0] / detect_count << ", "  << time_count[1] / detect_count
-                 << ", " << time_count[2] / detect_count << endl;*/
-
+        } else {
+            string s = " ";
+            videoProcess(USE_VIDEO, s, 0);
         }
-        fout.close();
+
         waitKey();
         return 0;
     }
+}
+
+void videoProcess(bool use_video, string video_dir, int camera_index) {
+    VideoCapture capture;
+    int frame_num;
+    if (use_video) {
+        cout << video_dir << endl;
+        capture.open(video_dir);
+        frame_num = capture.get(CV_CAP_PROP_FRAME_COUNT);
+    } else {
+        capture.open(camera_index);
+        frame_num = 10000;
+    }
+
+    Mat frame;
+    Mat frameGray;
+    Mat face;
+    MyRecognizer recog;
+    vector<Rect> recs;
+    Rect face_rect;
+    Size face_size(100, 100);
+    int frame_count = 0;
+    int detect_count = 0;
+    int wrong_count[3];
+    int time_count[3];
+    double confidence_count[6];
+    int t1, t2;
+    while (frame_count < frame_num) {
+        capture >> frame;
+        if (!frame.empty()) {
+            cvtColor(frame, frameGray, CV_BGR2GRAY);
+            recs.clear();
+            cascade.detectMultiScale(frameGray, recs, 1.3, 3, 0, Size(120, 120));
+            if (recs.size() > 0) {
+                face_rect = enlargeRect(recs[0], 0.1);
+                face = frameGray(face_rect).clone();
+                resize(face, face, face_size);
+                normalize(face, face, 0, 255, NORM_MINMAX, CV_8UC1);
+                int predictedLabel = -1;
+                double confidence = 0.0;
+
+                // EigenFace
+                t1 = getTickCount();
+                model1->predict(face, predictedLabel, confidence);
+                recog.setResult(predictedLabel, EIGEN_RESULT);
+                t2 = getTickCount();
+                time_count[0] += (t2 - t1);
+                //cout << (t2 - t1) / getTickFrequency() * 1000 << ", ";
+                //cout << "1: P = " << predictedLabel << ", C = " << confidence << endl;
+
+                // FisherFace
+                t1 = getTickCount();
+                model2->predict(face, predictedLabel, confidence);
+                recog.setResult(predictedLabel, FISHER_RESULT);
+                t2 = getTickCount();
+                time_count[1] += (t2 - t1);
+                //cout << (t2 - t1) / getTickFrequency() * 1000 << ", ";
+                //cout << "2: P = " << predictedLabel << ", C = " << confidence << endl;
+
+                // LBPHFace
+                t1 = getTickCount();
+                model3->predict(face, predictedLabel, confidence);
+                recog.setResult(predictedLabel, LBPH_RESULT);
+                t2 = getTickCount();
+                time_count[2] += (t2 - t1);
+                //cout << (t2 - t1) / getTickFrequency() * 1000 << endl;
+                //cout << "3: P = " << predictedLabel << ", C = " << confidence << endl;
+                //fout << endl;
+
+                recog.updataInfo();
+
+                if (detect_count % (WINDOW_SIZE / 2) == 0 && detect_count>WINDOW_SIZE) {
+                    int final_result = recog.getRecognizeResult();
+                    if (final_result == DATABASE_SIZE + 1) {
+                        cout << "Not passed." << endl;
+                    } else {
+                        cout << "Result = " << final_result << endl;
+                    }
+                }
+
+                detect_count++;
+                rectangle(frame, recs[0], Scalar(255, 0, 0), 2);
+                imshow("Face", face);
+                waitKey(10);
+            }
+            imshow("R", frame);
+        }
+        frame_count++;
+    }
+    capture.release();
 }
 
 
