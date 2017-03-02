@@ -12,3 +12,6 @@ OpenCV module tests
 
 ## transMatrix
 多组点计算投影变换矩阵
+
+## OmniViewJoint
+七点全景拼接

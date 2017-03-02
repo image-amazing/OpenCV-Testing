@@ -6,6 +6,7 @@
 #include "opencv2/xfeatures2d.hpp"
 //#include <iostream>
 #include <io.h>
+#include <fstream>
 
 using namespace cv;
 using namespace cv::xfeatures2d;
@@ -13,9 +14,101 @@ using namespace std;
 
 #define VIDEO_DIR "..\\Video"
 
+
+class OptFlowlLK {
+  public:
+    OptFlowlLK();
+    void processLK(Mat& frame);
+    void sysInit(Mat& frame, Rect target);
+    void sysUpdate(Mat& frame, Rect target);
+    void plotKeyPoints(Mat& frame);
+    void write2file(ofstream& ofile);
+    vector<Vec4f> point_offset;     // [特征点相对目标框的位置(x,y)，特征点偏移的位移(x,y)]
+
+  private:
+    TermCriteria termcrit;
+    Size subPix_winSize;
+    Size winSize;
+    Mat frame_pre;
+    Rect target_pre;
+    vector<Point2f> corners;
+    vector<Point2f> corners_pre;
+    vector<uchar> status;
+    vector<float> err;
+
+    void calcPointsOffset();
+};
+
+OptFlowlLK::OptFlowlLK() {
+    termcrit = TermCriteria(TermCriteria::COUNT | TermCriteria::EPS, 20, 0.03);
+    subPix_winSize = Size(10, 10);
+    winSize = Size(21, 21);
+}
+
+void OptFlowlLK::sysInit(Mat& frame, Rect target) {
+    corners_pre.clear();
+    goodFeaturesToTrack(frame(target), corners_pre, 80, 0.01, 5, Mat(), 3, false, 0.04);
+    cornerSubPix(frame(target), corners_pre, subPix_winSize, Size(-1, -1), termcrit);
+    target_pre = target;
+    frame_pre = frame.clone();
+}
+
+void OptFlowlLK::sysUpdate(Mat& frame, Rect target) {
+    corners_pre.clear();
+    goodFeaturesToTrack(frame(target), corners_pre, 80, 0.01, 5, Mat(), 3, false, 0.04);
+    cornerSubPix(frame(target), corners_pre, subPix_winSize, Size(-1, -1), termcrit);
+    target_pre = target;
+    frame_pre = frame.clone();
+}
+
+void OptFlowlLK::processLK(Mat& frame) {
+    corners.clear();
+    calcOpticalFlowPyrLK(frame_pre(target_pre), frame(target_pre), corners_pre, corners, status,
+                         err, winSize, 3, termcrit, 0, 0.001);
+    //cout << corners_pre.size() << ", " << corners.size() << endl;
+    calcPointsOffset();
+}
+
+void OptFlowlLK::plotKeyPoints(Mat& frame) {
+    Point2f p;
+    for (size_t i = 0; i < corners.size(); i++) {
+        p.x = corners[i].x + target_pre.x;
+        p.y = corners[i].y + target_pre.y;
+        circle(frame, p, 2, Scalar(0, 0, 255), -1);
+    }
+}
+
+void OptFlowlLK::calcPointsOffset() {
+    point_offset.resize(corners.size());
+    for (size_t i = 0; i < corners.size(); i++) {
+        if (status[i] == 1) {
+            point_offset[i][0] = corners[i].x - float(target_pre.width) / 2.0f;
+            point_offset[i][1] = corners[i].y - float(target_pre.height) / 2.0f;
+            point_offset[i][2] = corners[i].x - corners_pre[i].x;
+            point_offset[i][3] = corners[i].y - corners_pre[i].y;
+        } else {
+            point_offset[i][0] = 0;
+            point_offset[i][1] = 0;
+            point_offset[i][2] = 0;
+            point_offset[i][3] = 0;
+        }
+    }
+    cout << endl;
+}
+
+void OptFlowlLK::write2file(ofstream& fout) {
+    for (size_t i = 0; i < point_offset.size(); i++) {
+        fout << point_offset[i][0] << ", ";
+        fout << point_offset[i][1] << ", ";
+        fout << point_offset[i][2] << ", ";
+        fout << point_offset[i][3] << endl;
+    }
+}
+
+
 //void keyPointMatch(vector<KeyPoint>& corners, vector<KeyPoint>& corners_pre);
-void getKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners);
-void plotKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners);
+//void getKeyPoints(Mat& frame, Rect target, vector<Point2f>& corners);
+//void plotKeyPoints(Mat& frame, Rect target, vector<Point2f>& corners);
 Rect moveRect(Rect src, int x, int y);
 Rect enlargeRect(Rect src, float scale);
 void getFiles(string path, vector<string>& files);
@@ -31,8 +124,10 @@ int main() {
     Rect target_pre;
     bool tracked = false;
 
-    vector<KeyPoint> corners;
-    vector<KeyPoint> corners_pre;
+    vector<Point2f> corners;
+    vector<Point2f> corners_pre;
+
+    OptFlowlLK optflow;
 
     VideoCapture capture;
     vector<string> video_files;
@@ -42,6 +137,8 @@ int main() {
         int total_frame = capture.get(CV_CAP_PROP_FRAME_COUNT);
         int number_frame = 30;
         capture.set(CV_CAP_PROP_POS_FRAMES, 30);
+        string ofile_name = video_files[i] + ".txt";
+        ofstream ofile(ofile_name);
         while (true) {
             capture >> frame;
             number_frame++;
@@ -56,13 +153,14 @@ int main() {
                 cascade.detectMultiScale(frame_gray(track_area), cars, 1.1, 1, 0, Size(30,30));
                 if (cars.size() > 0) {
                     target = moveRect(cars[0], track_area.x, track_area.y);
+                    rectangle(frame, target, Scalar(0, 255, 255), 1);
                     if (true) {
                         Rect area = enlargeRect(target, 0.1);
-                        getKeyPoints(frame_gray, area, corners);
-                        plotKeyPoints(frame, area, corners);
-                        //keyPointMatch(corners, corners_pre);
+                        optflow.processLK(frame_gray);
+                        optflow.write2file(ofile);
+                        optflow.sysUpdate(frame_gray, area);
+                        optflow.plotKeyPoints(frame);
                     }
-                    rectangle(frame, target, Scalar(0, 255, 255), 2);
                     tracked = true;
                     target_pre = target;
                     corners_pre = corners;
@@ -75,8 +173,7 @@ int main() {
                 if (cars.size() > 0) {
                     target = moveRect(cars[0], search_roi.x, search_roi.y);
                     Rect area = enlargeRect(target, 0.1);
-                    getKeyPoints(frame_gray, area, corners);
-                    plotKeyPoints(frame, area, corners);
+                    optflow.sysUpdate(frame_gray, area);
                     rectangle(frame, target, Scalar(0, 255, 255), 2);
                     tracked = true;
                     target_pre = target;
@@ -87,42 +184,16 @@ int main() {
             }
             rectangle(frame, search_roi, Scalar(255, 0, 0));
             imshow("R", frame);
-            waitKey(50);
+            if (waitKey(10) == 'q') {
+                break;
+            }
         }
+        capture.release();
+        ofile.close();
     }
 
 
     return 0;
-}
-
-
-//void keyPointMatch(vector<KeyPoint>& corners, vector<KeyPoint>& corners_pre) {
-//
-//}
-
-
-void getKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners) {
-    Ptr<Feature2D> b = SURF::create();
-    Mat descImg;
-    b->detect(frame(target), corners, Mat());
-    b->compute(frame(target), corners, descImg);
-
-    /*corners.clear();
-    goodFeaturesToTrack(frame(target), corners, 100, 0.01, 5, Mat(), 3, false, 0.04);
-    for (size_t i = 0; i < corners.size(); i++) {
-        corners[i].x += target.x;
-        corners[i].y += target.y;
-    }*/
-}
-
-
-void plotKeyPoints(Mat& frame, Rect target, vector<KeyPoint>& corners) {
-    Point p;
-    for (size_t i = 0; i < corners.size(); i++) {
-        p.x = corners[i].pt.x + target.x;
-        p.y = corners[i].pt.y + target.y;
-        circle(frame, p, 3, Scalar(0, 0, 255), -1);
-    }
 }
 
 

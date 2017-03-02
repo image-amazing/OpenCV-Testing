@@ -3,8 +3,15 @@ Release/
 Debug/
 CameraCalibration/
 
+
+
 *db
 *.jpg
+*.bmp
 *.vcxproj*
 *.avi
 *.yml
+
+
+FaceRecognize_no_contrib/
+test/
