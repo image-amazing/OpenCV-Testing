@@ -15,15 +15,16 @@ using namespace std;
 #define VIDEO_DIR "..\\Video"
 
 
-class OptFlowlLK {
+class OptFlowLK {
   public:
-    OptFlowlLK();
+    OptFlowLK();
     void processLK(Mat& frame);
     void sysInit(Mat& frame, Rect target);
     void sysUpdate(Mat& frame, Rect target);
     void plotKeyPoints(Mat& frame);
     void write2file(ofstream& ofile);
     vector<Vec4f> point_offset;     // [特征点相对目标框的位置(x,y)，特征点偏移的位移(x,y)]
+    vector<Vec2f> relative_offset;  // [dr， r]
 
   private:
     TermCriteria termcrit;
@@ -39,13 +40,13 @@ class OptFlowlLK {
     void calcPointsOffset();
 };
 
-OptFlowlLK::OptFlowlLK() {
+OptFlowLK::OptFlowLK() {
     termcrit = TermCriteria(TermCriteria::COUNT | TermCriteria::EPS, 20, 0.03);
     subPix_winSize = Size(10, 10);
     winSize = Size(21, 21);
 }
 
-void OptFlowlLK::sysInit(Mat& frame, Rect target) {
+void OptFlowLK::sysInit(Mat& frame, Rect target) {
     corners_pre.clear();
     goodFeaturesToTrack(frame(target), corners_pre, 80, 0.01, 5, Mat(), 3, false, 0.04);
     cornerSubPix(frame(target), corners_pre, subPix_winSize, Size(-1, -1), termcrit);
@@ -53,7 +54,7 @@ void OptFlowlLK::sysInit(Mat& frame, Rect target) {
     frame_pre = frame.clone();
 }
 
-void OptFlowlLK::sysUpdate(Mat& frame, Rect target) {
+void OptFlowLK::sysUpdate(Mat& frame, Rect target) {
     corners_pre.clear();
     goodFeaturesToTrack(frame(target), corners_pre, 80, 0.01, 5, Mat(), 3, false, 0.04);
     cornerSubPix(frame(target), corners_pre, subPix_winSize, Size(-1, -1), termcrit);
@@ -61,7 +62,7 @@ void OptFlowlLK::sysUpdate(Mat& frame, Rect target) {
     frame_pre = frame.clone();
 }
 
-void OptFlowlLK::processLK(Mat& frame) {
+void OptFlowLK::processLK(Mat& frame) {
     corners.clear();
     calcOpticalFlowPyrLK(frame_pre(target_pre), frame(target_pre), corners_pre, corners, status,
                          err, winSize, 3, termcrit, 0, 0.001);
@@ -69,7 +70,7 @@ void OptFlowlLK::processLK(Mat& frame) {
     calcPointsOffset();
 }
 
-void OptFlowlLK::plotKeyPoints(Mat& frame) {
+void OptFlowLK::plotKeyPoints(Mat& frame) {
     Point2f p;
     for (size_t i = 0; i < corners.size(); i++) {
         p.x = corners[i].x + target_pre.x;
@@ -78,31 +79,40 @@ void OptFlowlLK::plotKeyPoints(Mat& frame) {
     }
 }
 
-void OptFlowlLK::calcPointsOffset() {
-    point_offset.resize(corners.size());
+void OptFlowLK::calcPointsOffset() {
+    point_offset.clear();
+    relative_offset.clear();
+    Vec4f cur_offset;
+    Vec2f rel_offset;
     for (size_t i = 0; i < corners.size(); i++) {
         if (status[i] == 1) {
-            point_offset[i][0] = corners[i].x - float(target_pre.width) / 2.0f;
-            point_offset[i][1] = corners[i].y - float(target_pre.height) / 2.0f;
-            point_offset[i][2] = corners[i].x - corners_pre[i].x;
-            point_offset[i][3] = corners[i].y - corners_pre[i].y;
-        } else {
-            point_offset[i][0] = 0;
-            point_offset[i][1] = 0;
-            point_offset[i][2] = 0;
-            point_offset[i][3] = 0;
+            cur_offset[0] = corners[i].x - float(target_pre.width) / 2.0f;
+            cur_offset[1] = corners[i].y - float(target_pre.height) / 2.0f;
+            cur_offset[2] = corners[i].x - corners_pre[i].x;
+            cur_offset[3] = corners[i].y - corners_pre[i].y;
+            point_offset.push_back(cur_offset);
+            float r = sqrt(cur_offset[0] * cur_offset[0] + cur_offset[1] * cur_offset[1]);
+            rel_offset[0] = (cur_offset[0] * cur_offset[2] + cur_offset[1] * cur_offset[3]) / r / r;
+            rel_offset[1] = r;
+            relative_offset.push_back(rel_offset);
         }
     }
     cout << endl;
 }
 
-void OptFlowlLK::write2file(ofstream& fout) {
-    for (size_t i = 0; i < point_offset.size(); i++) {
-        fout << point_offset[i][0] << ", ";
-        fout << point_offset[i][1] << ", ";
-        fout << point_offset[i][2] << ", ";
-        fout << point_offset[i][3] << endl;
+void OptFlowLK::write2file(ofstream& fout) {
+    float offset_sum = 0;
+    float r_sum = 0;
+    for (size_t i = 0; i < relative_offset.size(); i++) {
+        offset_sum += relative_offset[i][0];
+        r_sum += relative_offset[i][1];
     }
+    offset_sum = offset_sum / float(relative_offset.size());
+    r_sum = r_sum / float(relative_offset.size());
+    fout << offset_sum << ", ";
+    fout << r_sum << ", ";
+    fout << relative_offset.size() << ", ";
+    fout << target_pre.width << endl;
 }
 
 
@@ -127,7 +137,7 @@ int main() {
     vector<Point2f> corners;
     vector<Point2f> corners_pre;
 
-    OptFlowlLK optflow;
+    OptFlowLK optflow;
 
     VideoCapture capture;
     vector<string> video_files;
