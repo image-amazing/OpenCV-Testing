@@ -1,0 +1,11 @@
+.\\Video\\1.avi	李建春
+.\\Video\\2.avi	韩安平
+.\\Video\\3.avi	王柄淇
+.\\Video\\4.avi	周世龙
+.\\Video\\5.avi	孙辉
+.\\Video\\6.avi	陈超
+.\\Video\\7.avi	裴凯
+.\\Video\\8.avi	方蕾
+.\\Video\\9.avi	张莉
+.\\Video\\10.avi 陈睐
+.\\Video\\11.avi 吕思静

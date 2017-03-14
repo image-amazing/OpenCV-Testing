@@ -11,6 +11,7 @@ Video/
 *.vcxproj*
 *.avi
 *.yml
+*.rar
 
 
 FaceRecognize_no_contrib/

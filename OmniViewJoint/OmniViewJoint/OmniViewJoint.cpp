@@ -25,7 +25,7 @@ void PlotSingleLine(Mat& frame, Vec4f& plotLine, double dL) {
 void getMask(Mat& mask, vector<Point> pointVec, int flag) {
     Mat temp_mask(480, 320, CV_8U, Scalar(0, 0, 0));;
 
-    if (flag == 0) { // 四边形
+    if (flag == 0) { // ?????
         Point root_points[1][4];
         root_points[0][0] = pointVec[0];
         root_points[0][1] = pointVec[1];
@@ -35,7 +35,7 @@ void getMask(Mat& mask, vector<Point> pointVec, int flag) {
         int npt[] = { 4 };
         polylines(temp_mask, ppt, npt, 1, 1, Scalar(255), 1, 8, 0);
         fillPoly(temp_mask, ppt, npt, 1, Scalar(255, 255, 255));
-    } else if (flag == 1) { // 五边形
+    } else if (flag == 1) { // ??????
         Point root_points[1][5];
         root_points[0][0] = pointVec[0];
         root_points[0][1] = pointVec[1];
@@ -47,7 +47,7 @@ void getMask(Mat& mask, vector<Point> pointVec, int flag) {
         int npt[] = { 5 };
         polylines(temp_mask, ppt, npt, 1, 1, Scalar(255), 1, 8, 0);
         fillPoly(temp_mask, ppt, npt, 1, Scalar(255, 255, 255));
-    } else if (flag == 2) { // 六边形
+    } else if (flag == 2) { // ??????
 
         Point root_points[1][6];
         root_points[0][0] = pointVec[0];
@@ -68,7 +68,7 @@ void getMask(Mat& mask, vector<Point> pointVec, int flag) {
 }
 
 void SaveMapXY(Mat mapx, string name) {
-    //写mapx,mapy为xml文件
+    //дmapx,mapy?xml???
     Mat map_x;
     string mapx_xml = name;
     string mapx_xml_name = ".\\" + mapx_xml + ".xml";
@@ -81,9 +81,9 @@ void SaveMapXY(Mat mapx, string name) {
 }
 
 
-//加载mapx.xml到Mat
+//????mapx.xml??Mat
 void ReadMapXY(Mat& mapx, string name) {
-    //读mapx,mapy为xml文件
+    //??mapx,mapy?xml???
     string mapx_xml = name;
 
     string mapx_xml_name = ".\\" + mapx_xml + ".xml";
@@ -122,14 +122,14 @@ void getCalibPoints(Mat frame, vector<Point2f>& points) {
 
 void calib(int image_count, Size board_size) {
 
-    Size image_size;                                          //     图像的尺寸
-    vector<Point2f> corners;                                  //     缓存每幅图像上检测到的角点
-    vector<vector<Point2f>>  corners_Seq;                     //     保存检测到的所有角点
+    Size image_size;                                          //     ???????
+    vector<Point2f> corners;                                  //     ???????????????????
+    vector<vector<Point2f>>  corners_Seq;                     //     ?????????????н??
     vector<Mat>  image_Seq;
     cv::Mat image;
     Mat image_gray;
-    int successImageNum = 0;                                  //     检测角度成功图片个数
-    int count = 0;                                            //     角点个数
+    int successImageNum = 0;                                  //     ???????????????
+    int count = 0;                                            //     ???????
 
     for (int i = 0; i < image_count; i++) {
         cout << "Frame #" << i + 1 << "..." << endl;
@@ -157,18 +157,18 @@ void calib(int image_count, Size board_size) {
         }
     }
     /************************************************************************
-    摄像机定标
+    ??????????
     *************************************************************************/
-    vector<vector<Point3f>>  object_Points;        /****  保存定标板上角点的三维坐标   ****/
+    vector<vector<Point3f>>  object_Points;        /****  ???涨?????????????????   ****/
 
-    Mat image_points = Mat(1, count, CV_32FC2, Scalar::all(0));  /*****   保存提取的所有角点   *****/
+    Mat image_points = Mat(1, count, CV_32FC2, Scalar::all(0));  /*****   ????????????н??   *****/
     vector<int>  point_counts;
-    /* 初始化定标板上角点的三维坐标 */
+    /* ???????????????????????? */
     for (int t = 0; t < successImageNum; t++) {
         vector<Point3f> tempPointSet;
         for (int i = 0; i<board_size.height; i++) {
             for (int j = 0; j < board_size.width; j++) {
-                /* 假设定标板放在世界坐标系中z=0的平面上 */
+                /* ???趨???????????????????z=0??????? */
                 Point3f tempPoint;
                 tempPoint.x = i*board_size.width;
                 tempPoint.y = j*board_size.height;
@@ -183,12 +183,12 @@ void calib(int image_count, Size board_size) {
         point_counts.push_back(board_size.width * board_size.height);
     }
 
-    /* 开始定标 */
+    /* ??????? */
     image_size = image_Seq[0].size();
-    cv::Mat intrinsic_matrix;                                          /*****    摄像机内参数矩阵    ****/
-    cv::Mat distortion_coeffs;                                         /* 摄像机的4个畸变系数：k1,k2,k3,k4*/
-    std::vector<cv::Vec3d> rotation_vectors;                           /* 每幅图像的旋转向量 */
-    std::vector<cv::Vec3d> translation_vectors;                        /* 每幅图像的平移向量 */
+    cv::Mat intrinsic_matrix;                                          /*****    ???????????????    ****/
+    cv::Mat distortion_coeffs;                                         /* ????????4???????????k1,k2,k3,k4*/
+    std::vector<cv::Vec3d> rotation_vectors;                           /* ??????????????? */
+    std::vector<cv::Vec3d> translation_vectors;                        /* ??????????????? */
     int flags = 0;
     flags |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
     flags |= cv::fisheye::CALIB_CHECK_COND;
@@ -197,12 +197,12 @@ void calib(int image_count, Size board_size) {
                        translation_vectors, flags, cv::TermCriteria(3, 20, 1e-6));
 
     /************************************************************************
-    显示定标结果
+    ???????????
     *************************************************************************/
     Mat mapx = Mat(image_size, CV_32FC1);
     Mat mapy = Mat(image_size, CV_32FC1);
     Mat R = Mat::eye(3, 3, CV_32F);
-    cout << "保存矫正图像" << endl;
+    cout << "???????????" << endl;
     for (int i = 0; i != image_count; i++) {
         cout << "Frame #" << i + 1 << "..." << endl;
         Matx33d newCameraMatrix = Mat(3, 3, CV_32FC1, Scalar::all(0));
@@ -216,10 +216,10 @@ void calib(int image_count, Size board_size) {
         SaveMapXY(R, "R");
 
     }
-    cout << "保存结束" << endl;
+    cout << "????????" << endl;
 }
 
-void InitMatrixData(Mat frame, Mat& trans_Matrix, int flag) { // 前
+void InitMatrixData(Mat frame, Mat& trans_Matrix, int flag) { // ?
     vector<Point2f> objPts(4), imgPts(4);
     if (flag == 0) {
 
@@ -400,7 +400,7 @@ double getYValue(double x, Point p1, Point p2) {
     return y;
 }
 
-int dist2line(Point pt, Point p1, Point p2) {	//判断点在直线的左侧还是右侧
+int dist2line(Point pt, Point p1, Point p2) {	//?ж?????????????????
     int A = p1.y - p2.y;
     int B = p2.x - p1.x;
     int C = p1.x*p2.y - p2.x*p1.y;
@@ -439,7 +439,7 @@ void seamRefine(Mat& OFrame, Mat& frame1, Mat& frame2, int rowB, int rowE, int c
 void seamRefine1(Mat& OFrame, Mat& frame1, Mat& frame2, int rowB, int rowE, int colB, int colE, int flag) {
     uchar* p;
 
-    if (flag == 0) { // 上下拼接
+    if (flag == 0) { // ???????
         for (int j = rowB; j < rowE; j++) {
             p = OFrame.ptr<uchar>(j);
 
@@ -452,7 +452,7 @@ void seamRefine1(Mat& OFrame, Mat& frame1, Mat& frame2, int rowB, int rowE, int 
                 p[i + 2] = mu1 * frame1.at<uchar>(j, i + 2) + mu2 * frame2.at<uchar>(j, i + 2);
             }
         }
-    } else if (flag == 1) { // 左右拼接
+    } else if (flag == 1) { // ???????
         for (int j = rowB; j < rowE; j++) {
             p = OFrame.ptr<uchar>(j);
 
@@ -472,9 +472,9 @@ void seamRefine1(Mat& OFrame, Mat& frame1, Mat& frame2, int rowB, int rowE, int 
 
 void unDistort(Mat frame, Mat& distortFrame) {
     Mat R = Mat::eye(3, 3, CV_32F);
-    Mat intrinsic_matrix = Mat(3, 3, CV_32FC1, Scalar::all(0));             // 摄像机内参数矩阵
-    Mat distortion_coeffs = Mat(1, 4, CV_32FC1, Scalar::all(0));            // 摄像机的4个畸变系数：k1,k2,p1,p2
-    Size image_size = Size(704, 480);                                       //     图像的尺寸
+    Mat intrinsic_matrix = Mat(3, 3, CV_32FC1, Scalar::all(0));             // ???????????????
+    Mat distortion_coeffs = Mat(1, 4, CV_32FC1, Scalar::all(0));            // ????????4???????????k1,k2,p1,p2
+    Size image_size = Size(704, 480);                                       //     ???????
     mapx = Mat::zeros(image_size, CV_32FC1);
     mapy = Mat::zeros(image_size, CV_32FC1);
 
@@ -502,31 +502,31 @@ void unDistort(Mat frame, Mat& distortFrame) {
 void proBird() {
     if (NEW_MATRIX) {
         FileStorage fs("transMatrix.xml", FileStorage::WRITE);
-        //前
+        //?
         InitMatrixData(disFront, trans_Matrix, 0);
         warpPerspective(disFront, proFront, trans_Matrix, Size(320, 480));
         fs << "front" << trans_Matrix;
-        //右1
+        //??1
         InitMatrixData(disRight1, trans_Matrix, 1);
         warpPerspective(disRight1, proRight1, trans_Matrix, Size(320, 480));
         fs << "right1" << trans_Matrix;
-        //右2
+        //??2
         InitMatrixData(disRight2, trans_Matrix, 2);
         warpPerspective(disRight2, proRight2, trans_Matrix, Size(320, 480));
         fs << "right2" << trans_Matrix;
-        //后1
+        //??1
         InitMatrixData(disBack1, trans_Matrix, 3);
         warpPerspective(disBack1, proBack1, trans_Matrix, Size(320, 480));
         fs << "back1" << trans_Matrix;
-        //后2
+        //??2
         InitMatrixData(disBack2, trans_Matrix, 4);
         warpPerspective(disBack2, proBack2, trans_Matrix, Size(320, 480));
         fs << "back2" << trans_Matrix;
-        //左1
+        //??1
         InitMatrixData(disLeft1, trans_Matrix, 5);
         warpPerspective(disLeft1, proLeft1, trans_Matrix, Size(320, 480));
         fs << "left1" << trans_Matrix;
-        //左2
+        //??2
         InitMatrixData(disLeft2, trans_Matrix, 6);
         warpPerspective(disLeft2, proLeft2, trans_Matrix, Size(320, 480));
         fs << "left2" << trans_Matrix;
@@ -552,7 +552,7 @@ void proBird() {
 }
 
 void initPoint() {
-    //右前
+    //???
     pMerge[0][0] = Point((SCREEN_W + SCAR_W) / 2, (SCREEN_H - SCAR_H) / 2);
     pMerge[0][3] = Point(SCREEN_W, -8);
     pMerge[0][2] = Point(SCREEN_W, 0);
@@ -560,7 +560,7 @@ void initPoint() {
     pMerge[0][4] = Point((SCREEN_W + SCAR_W) / 2, (SCREEN_H - SCAR_H) / 2 + 8);
     pMerge[0][5] = Point((SCREEN_W + SCAR_W) / 2 - 10, (SCREEN_H - SCAR_H) / 2);
 
-    //右后
+    //???
     pMerge[1][0] = Point((SCREEN_W + SCAR_W) / 2, (SCREEN_H + SCAR_H) / 2);
     pMerge[1][1] = Point(SCREEN_W, SCREEN_H - 8);
     pMerge[1][2] = Point(SCREEN_W, SCREEN_H);
@@ -568,7 +568,7 @@ void initPoint() {
     pMerge[1][4] = Point((SCREEN_W + SCAR_W) / 2, (SCREEN_H + SCAR_H) / 2 - 8);
     pMerge[1][5] = Point((SCREEN_W + SCAR_W) / 2 - 8, (SCREEN_H + SCAR_H) / 2);
 
-    //左前
+    //???
     pMerge[2][0] = Point((SCREEN_W - SCAR_W) / 2, (SCREEN_H - SCAR_H) / 2);
     pMerge[2][3] = Point(0, 8);
     pMerge[2][2] = Point(0, 0);
@@ -576,7 +576,7 @@ void initPoint() {
     pMerge[2][5] = Point((SCREEN_W - SCAR_W) / 2, (SCREEN_H - SCAR_H) / 2 + 8);
     pMerge[2][4] = Point((SCREEN_W - SCAR_W) / 2 + 8, (SCREEN_H - SCAR_H) / 2);
 
-    //左后
+    //????
     pMerge[3][0] = Point((SCREEN_W - SCAR_W) / 2, (SCREEN_H + SCAR_H) / 2);
     pMerge[3][3] = Point(0, SCREEN_H - 10);
     pMerge[3][2] = Point(0, SCREEN_H);
@@ -645,7 +645,7 @@ void joint() {
 }
 
 void extendMask() {
-    // 前 缩小
+    // ? ??С
     /*Point p1 = { 10, 0 }, p2 = { SCREEN_W - 10, 0 }, p3 = { (SCREEN_W - SCAR_W) / 2 - 10, (SCREEN_H - SCAR_H) / 2 - 10},
     p4 = { (SCREEN_W + SCAR_W) / 2 - 10, (SCREEN_H - SCAR_H) / 2 - 10 }, p5, p6;*/
     Point p1 = { 0, -10 }, p2 = { SCREEN_W - 10, 0 }, p3 = { (SCREEN_W - SCAR_W) / 2 - 10, (SCREEN_H - SCAR_H) / 2 - 10 },
@@ -653,7 +653,7 @@ void extendMask() {
     vector<Point>pt_vector = { p1,p2, p4, p3 };
     getMask(maskCUTFront, pt_vector, 0);
 
-    // 前 扩大
+    // ? ????
     p1 = { 0, 0 }, p2 = { SCREEN_W, 0 }, p3 = { SCREEN_W, 10 };
     p4 = { (SCREEN_W + SCAR_W) / 2, (SCREEN_H - SCAR_H) / 2 + 10 },
     p5 = { (SCREEN_W - SCAR_W) / 2, (SCREEN_H - SCAR_H) / 2 + 10 };
@@ -661,7 +661,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4, p5, p6 };
     getMask(maskETDFront, pt_vector, 2);
 
-    // 右1 缩小
+    // ??1 ??С
     p1 = { (SCREEN_W + SCAR_W) / 2 + 10, (SCREEN_H - SCAR_H) / 2 + 10 };
     p2 = { SCREEN_W, 10 };
     p3 = { (SCREEN_W + SCAR_W) / 2 + 10, SCREEN_H / 2 - 10 };
@@ -669,7 +669,7 @@ void extendMask() {
     pt_vector = { p1, p2, p4, p3 };
     getMask(maskCUTRight1, pt_vector, 0);
 
-    // 右1 扩大
+    // ??1 ????
     p1 = { (SCREEN_W + SCAR_W) / 2 - 10, (SCREEN_H - SCAR_H) / 2 - 10 };
     p2 = { SCREEN_W - 10, 0 };
     p3 = { SCREEN_W, 0 };
@@ -678,7 +678,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4, p5 };
     getMask(maskETDRight1, pt_vector, 1);
 
-    // 右2 缩小
+    // ??2 ??С
     p1 = { (SCREEN_W + SCAR_W) / 2 + 10, SCREEN_H / 2 + 10 };
     p2 = { SCREEN_W, SCREEN_H / 2 + 10 };
     p3 = { SCREEN_W, SCREEN_H - 10 };
@@ -686,7 +686,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4 };
     getMask(maskCUTRight2, pt_vector, 0);
 
-    // 右2 扩大
+    // ??2 ????
     p1 = { (SCREEN_W + SCAR_W) / 2 - 10, SCREEN_H / 2 - 10 };
     p2 = { SCREEN_W, SCREEN_H / 2 - 10 };
     p3 = { SCREEN_W, SCREEN_H };
@@ -695,7 +695,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4, p5 };
     getMask(maskETDRight2, pt_vector, 1);
 
-    // 后1 缩小
+    // ??1 ??С
     p1 = { SCREEN_W / 2 + 10, (SCREEN_H + SCAR_H) / 2 + 10 };
     p2 = { (SCREEN_W + SCAR_W) / 2 - 10, (SCREEN_H + SCAR_H) / 2 + 10 };
     p3 = { SCREEN_W - 10, SCREEN_H };
@@ -703,7 +703,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4 };
     getMask(maskCUTBack1, pt_vector, 0);
 
-    // 后1 扩大
+    // ??1 ????
     p1 = { SCREEN_W / 2 - 10, (SCREEN_H + SCAR_H) / 2 - 10 };
     p2 = { (SCREEN_W + SCAR_W) / 2 + 10, (SCREEN_H + SCAR_H) / 2 - 10 };
     p3 = { SCREEN_W, SCREEN_H - 10 };
@@ -712,7 +712,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4, p5 };
     getMask(maskETDBack1, pt_vector, 1);
 
-    // 后2 缩小
+    // ??2 ??С
     p1 = { SCREEN_W / 2 - 10, (SCREEN_H + SCAR_H) / 2 + 10 };
     p2 = { SCREEN_W / 2 - 10, SCREEN_H };
     p3 = { 10, SCREEN_H };
@@ -720,7 +720,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4 };
     getMask(maskCUTBack2, pt_vector, 0);
 
-    // 后2 扩大
+    // ??2 ????
     p1 = { SCREEN_W / 2 + 10, (SCREEN_H + SCAR_H) / 2 - 10 };
     p2 = { SCREEN_W / 2 + 10, SCREEN_H };
     p3 = { 0, SCREEN_H };
@@ -729,7 +729,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4, p5 };
     getMask(maskETDBack2, pt_vector, 1);
 
-    // 左1 缩小
+    // ??1 ??С
     p1 = { (SCREEN_W - SCAR_W) / 2 - 10, (SCREEN_H + SCAR_H) / 2 - 10 };
     p2 = { 0, SCREEN_H - 10 };
     p3 = { 0, SCREEN_H / 2 + 10 };
@@ -737,7 +737,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4 };
     getMask(maskCUTLeft1, pt_vector, 0);
 
-    // 左1 扩大
+    // ??1 ????
     p1 = { 0, SCREEN_H / 2 - 10 };
     p2 = { (SCREEN_W - SCAR_W) / 2 + 10, SCREEN_H / 2 - 10 };
     p3 = { (SCREEN_W - SCAR_W) / 2 + 10, (SCREEN_H + SCAR_H) / 2 + 10 };
@@ -746,7 +746,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4, p5 };
     getMask(maskETDLeft1, pt_vector, 1);
 
-    // 左2 缩小
+    // ??2 ??С
     p1 = { 0, 10 };
     p2 = { (SCREEN_W - SCAR_W) / 2 - 10, (SCREEN_H - SCAR_H) / 2 - 10 };
     p3 = { (SCREEN_W - SCAR_W) / 2 - 10, SCREEN_H / 2 - 10 };
@@ -754,7 +754,7 @@ void extendMask() {
     pt_vector = { p1, p2, p3, p4 };
     getMask(maskCUTLeft2, pt_vector, 0);
 
-    // 左2 扩大
+    // ??2 ????
     p1 = { 0, 0 };
     p2 = { 10, 0 };
     p3 = { (SCREEN_W - SCAR_W) / 2 + 10, (SCREEN_H - SCAR_H) / 2 - 10 };
@@ -788,7 +788,7 @@ void undistort() {
     unDistort(imgBack2, disBack2);
 }
 
-// 利用table生成图像
+// ????table???????
 void getImage(Mat& frameFV, Mat& frameBV, Mat& table) {
     int* pTable;
     for (unsigned i = 1; i < table.rows; i++) {
@@ -806,7 +806,7 @@ void getImage(Mat& frameFV, Mat& frameBV, Mat& table) {
     }
 }
 
-// tables鱼眼部分
+// tables???????
 void fisheyeTables(Mat& table) {
     Mat frame = imread("..\\data\\img\\1.BMP");
     Mat frameP(2 * frame.rows, 2 * frame.cols, CV_8UC3);
@@ -949,10 +949,10 @@ int calcSeamWeight(int x, int y, int flag) {
     return w;
 }
 
-// 单个table
+// ????table
 void calcTable(Mat& transM, Mat& maskB, Mat& maskS, int flag) {
     cout << "Flag = " << flag << endl;
-    // table文件名生成
+    // table?????????
     char t[10];
     sprintf(t, "%d", flag);
     string table_name = t;
@@ -960,7 +960,7 @@ void calcTable(Mat& transM, Mat& maskB, Mat& maskS, int flag) {
     ofstream fout(table_name);
     Mat transM_inv = transM.inv();
 
-    // 需要填充的点的列表
+    // ?????????????б?
     uchar *pMaskB;
     //uchar *pMaskS;
     vector<Point2f> pBV;
@@ -976,7 +976,7 @@ void calcTable(Mat& transM, Mat& maskB, Mat& maskS, int flag) {
     }
     perspectiveTransform(pBV, pPV, transM_inv);
 
-    // 寻找主体对应点
+    // ????????????
     for (size_t i = 0; i < pPV.size(); i++) {
         if (pPV[i].x >= 0 && pPV[i].x <= 1407 && pPV[i].y >= 0 && pPV[i].y <= 959) {
             int xx = pBV[i].x;
@@ -1002,7 +1002,7 @@ void calcTable(Mat& transM, Mat& maskB, Mat& maskS, int flag) {
 }
 
 
-// 生成查找表
+// ????????
 void generateTables() {
     extendMask();
     FileStorage fs("transMatrix.xml", FileStorage::READ);
@@ -1088,7 +1088,7 @@ void getFrameFromTable(Mat& frame, Mat& oframe, int flag) {
     }
 }
 
-// 验证查找表
+// ????????
 void checkTables() {
     Mat origin_frame;
     Mat out_frame = Mat::zeros(480, 320, CV_8UC3);
@@ -1134,7 +1134,7 @@ void checkTables() {
 int main() {
     //calib(6, Size(4, 4));
 
-    //读图
+    //???
     imgCar = imread("..\\img\\car.jpg");
     resize(imgCar, imgCar, Size(100, 340));
     imgFront = imread("..\\img\\1.bmp");
@@ -1145,22 +1145,22 @@ int main() {
     imgLeft1 = imread("..\\img\\6.bmp");
     imgLeft2 = imread("..\\\img\\7.bmp");
 
-    // 鱼眼矫正
+    // ???????
     undistort();
 
-    // 投影
+    // ??
     proBird();
 
-    // 拼合图像
+    // ??????
     joint();
 
-    // 优化接缝
+    // ??????
     refine();
 
-    // 生成查找表
+    // ????????
     generateTables();
 
-    // 验证查找表
+    // ????????
     checkTables();
 
     //imshow("3", omniView);
